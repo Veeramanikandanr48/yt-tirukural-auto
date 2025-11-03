@@ -1,0 +1,11 @@
+moviepy>=1.0.3
+Pillow>=10.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+torch>=2.0.0
+transformers>=4.35.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-api-python-client>=2.100.0
+pytz>=2023.3
+

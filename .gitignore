@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv310/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sensitive files
+client_secrets.json
+token.pickle
+*.key
+*.pem
+
+# Output files
+dist/
+data/audio_generated/
+temp/
+logs/*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Model cache
+.cache/
+*.h5
+*.pth
+*.pt
+
+# Temporary files
+*.tmp
+*.bak
+~*
+
+# Keep these directories but ignore their contents
+!dist/.gitkeep
+!data/.gitkeep
+!temp/.gitkeep
+!logs/.gitkeep
+
