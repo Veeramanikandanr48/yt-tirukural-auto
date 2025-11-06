@@ -49,6 +49,9 @@ desktop.ini
 *.bak
 ~*
 
+# State tracking files
+last_kural.txt
+
 # Keep these directories but ignore their contents
 !dist/.gitkeep
 !data/.gitkeep
