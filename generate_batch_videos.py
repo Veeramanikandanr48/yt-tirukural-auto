@@ -1,7 +1,31 @@
 from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 from moviepy.audio.io.AudioFileClip import AudioFileClip
 from moviepy.audio.AudioClip import CompositeAudioClip, AudioArrayClip
-from moviepy.audio.fx.volumex import volumex
+# volumex import - try different paths for different moviepy versions
+volumex = None
+try:
+    from moviepy.audio.fx.volumex import volumex
+except ImportError:
+    try:
+        from moviepy.video.fx.volumex import volumex
+    except ImportError:
+        try:
+            # For moviepy 2.0+, try video.fx.all
+            from moviepy.video.fx.all import volumex
+        except ImportError:
+            # Create a simple volumex function if not available
+            def volumex(clip, factor):
+                """Volume multiplier - fallback implementation"""
+                # Try different methods based on moviepy version
+                if hasattr(clip, 'volumex'):
+                    return clip.volumex(factor)
+                elif hasattr(clip, 'with_volume'):
+                    return clip.with_volume(factor)
+                elif hasattr(clip, 'set_volume'):
+                    return clip.set_volume(factor)
+                else:
+                    # Last resort: return clip unchanged
+                    return clip
 from PIL import Image, ImageDraw, ImageFont
 from transformers import VitsModel, AutoTokenizer
 import torch
@@ -652,7 +676,20 @@ def create_video(text, audio_path, output_video_path, kural_number=1):
                 bgm_looped = bgm_clip.subclip(0, target_duration)
             
             # Lower BGM volume
-            bgm_looped = bgm_looped.fx(volumex, bgm_volume)
+            # Use volumex if available, otherwise use with_volume or set_volume
+            try:
+                bgm_looped = bgm_looped.fx(volumex, bgm_volume)
+            except (AttributeError, TypeError):
+                # Fallback for newer moviepy versions
+                if hasattr(bgm_looped, 'with_volume'):
+                    bgm_looped = bgm_looped.with_volume(bgm_volume)
+                elif hasattr(bgm_looped, 'set_volume'):
+                    bgm_looped = bgm_looped.set_volume(bgm_volume)
+                elif hasattr(bgm_looped, 'volumex'):
+                    bgm_looped = bgm_looped.volumex(bgm_volume)
+                else:
+                    # If no volume method available, skip volume adjustment
+                    print(f"  ⚠ Warning: Could not adjust BGM volume, using original volume")
             
             # Mix TTS audio with BGM
             final_audio = CompositeAudioClip([bgm_looped, main_audio])
