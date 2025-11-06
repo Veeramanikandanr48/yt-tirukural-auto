@@ -42,7 +42,7 @@ YOUTUBE_PRIVACY_STATUS = config.YOUTUBE_PRIVACY_STATUS
 
 # Scheduling Configuration - Import from config.py
 YOUTUBE_SCHEDULE_ENABLED = config.YOUTUBE_SCHEDULE_ENABLED
-YOUTUBE_SCHEDULE_TIME = config.YOUTUBE_SCHEDULE_TIME
+YOUTUBE_SCHEDULE_TIMES = config.YOUTUBE_SCHEDULE_TIMES  # List of schedule times
 YOUTUBE_SCHEDULE_START_DATE = config.YOUTUBE_SCHEDULE_START_DATE
 YOUTUBE_TIMEZONE = config.YOUTUBE_TIMEZONE
 
@@ -774,20 +774,28 @@ def get_authenticated_service():
     
     return build('youtube', 'v3', credentials=creds)
 
-def calculate_publish_date(video_index, start_date=None, schedule_time="08:00"):
+def calculate_publish_date(video_index, start_date=None, schedule_times=None):
     """
-    Calculate the publish date for a video based on its index
+    Calculate the publish date for a video based on its index, cycling through multiple schedule times
     
     Args:
         video_index: Index of the video (1-based)
-        start_date: Start date as string (YYYY-MM-DD) or None for tomorrow
-        schedule_time: Time in 24-hour format (HH:MM)
+        start_date: Start date as string (YYYY-MM-DD) or None for today/tomorrow
+        schedule_times: List of schedule times in 24-hour format (HH:MM), cycles through them
     
     Returns:
         RFC 3339 formatted datetime string for YouTube API
     """
     from datetime import datetime, timedelta
     import pytz
+    
+    # Use default schedule times if not provided
+    if schedule_times is None:
+        schedule_times = YOUTUBE_SCHEDULE_TIMES if hasattr(config, 'YOUTUBE_SCHEDULE_TIMES') else ["08:00"]
+    
+    # Cycle through schedule times (0-based index, so video_index 1 uses times[0])
+    time_index = (video_index - 1) % len(schedule_times)
+    schedule_time = schedule_times[time_index]
     
     # Parse time
     hour, minute = map(int, schedule_time.split(':'))
@@ -801,34 +809,55 @@ def calculate_publish_date(video_index, start_date=None, schedule_time="08:00"):
     
     # Determine start date
     now = datetime.now(tz)
+    
+    # Calculate which day this video should be published
+    # Each day has len(schedule_times) slots (e.g., 4 slots per day: 8, 12, 3, 6)
+    # Day number: (video_index - 1) // len(schedule_times)
+    day_offset = (video_index - 1) // len(schedule_times)
+    
     if start_date:
         try:
             # Parse start date and make it timezone-aware
-            start = datetime.strptime(start_date, "%Y-%m-%d")
-            start = tz.localize(start.replace(hour=hour, minute=minute, second=0, microsecond=0))
+            start_day = datetime.strptime(start_date, "%Y-%m-%d")
+            start_day = tz.localize(start_day.replace(hour=0, minute=0, second=0, microsecond=0))
+            
             # If start date is in the past, use today instead
-            if start < now:
-                start = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-                # If scheduled time has passed today, use tomorrow
-                if start < now:
-                    start = start + timedelta(days=1)
+            if start_day.date() < now.date():
+                start_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
         except:
-            # If invalid, use today or tomorrow
-            start = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-            if start < now:
-                start = start + timedelta(days=1)
+            # If invalid, use today
+            start_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     else:
-        # Start from today at the scheduled time, or tomorrow if time has passed
-        start = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if start < now:
-            # Scheduled time has passed today, use tomorrow
-            start = start + timedelta(days=1)
+        # Start from today
+        start_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
-    # Calculate publish date (video_index days from start, with video_index 1 being the first day)
-    publish_date = start + timedelta(days=video_index - 1)
+    # Calculate the target date (day_offset days from start_day)
+    target_date = start_day + timedelta(days=day_offset)
+    
+    # Set the time for this video
+    publish_datetime = target_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    
+    # If the scheduled time has already passed today, move to next occurrence
+    if day_offset == 0 and publish_datetime < now:
+        # If it's today and time has passed, check if we should use next time slot or next day
+        # If this is the last time slot of the day, move to next day's first slot
+        if time_index == len(schedule_times) - 1:
+            # Last slot of today has passed, move to tomorrow's first slot
+            publish_datetime = (target_date + timedelta(days=1)).replace(
+                hour=int(schedule_times[0].split(':')[0]),
+                minute=int(schedule_times[0].split(':')[1]),
+                second=0,
+                microsecond=0
+            )
+        else:
+            # Use next time slot today
+            next_time_index = time_index + 1
+            next_time = schedule_times[next_time_index]
+            next_hour, next_minute = map(int, next_time.split(':'))
+            publish_datetime = target_date.replace(hour=next_hour, minute=next_minute, second=0, microsecond=0)
     
     # Convert to RFC 3339 format (ISO 8601)
-    return publish_date.isoformat()
+    return publish_datetime.isoformat()
 
 def validate_and_clean_tags(tags):
     """Validate and clean tags for YouTube API"""
@@ -1048,7 +1077,12 @@ def process_sentences():
     # Get last processed kural and start from the next one
     last_kural = get_last_processed_kural()
     start_kural = last_kural + 1  # Start from next kural after last processed
-    num_kurals = 10  # Process 10 kurals per day
+    
+    # Get number of videos to process per run from config (always exactly this many)
+    num_kurals = config.VIDEOS_PER_RUN if hasattr(config, 'VIDEOS_PER_RUN') else 10
+    # Ensure it's a positive integer
+    num_kurals = max(1, int(num_kurals))
+    
     end_kural = start_kural + num_kurals - 1
     
     # Check if there are enough kurals to process
@@ -1060,20 +1094,36 @@ def process_sentences():
         print(f"{'='*60}\n")
         return
     
-    # Adjust end_kural if we're near the end
+    # Adjust end_kural if we're near the end (but still try to process exactly num_kurals if possible)
     if end_kural > total_available:
-        end_kural = total_available
+        # If we can't get exactly num_kurals, process what's available
+        end_kural = min(total_available, start_kural + num_kurals - 1)
         num_kurals = end_kural - start_kural + 1
-        print(f"  ℹ Note: Only {num_kurals} kurals remaining (up to kural {total_available})")
+        if num_kurals < config.VIDEOS_PER_RUN:
+            print(f"  ℹ Note: Only {num_kurals} kurals remaining (requested {config.VIDEOS_PER_RUN}, available up to kural {total_available})")
     
     # Slice arrays to get only the kurals to process (0-based indices)
     start_index = start_kural - 1  # Convert to 0-based index
     end_index = start_index + num_kurals
+    
+    # Safety check: Never process more than configured VIDEOS_PER_RUN
+    max_videos = config.VIDEOS_PER_RUN if hasattr(config, 'VIDEOS_PER_RUN') else 10
+    num_kurals = min(num_kurals, max_videos)
+    end_index = start_index + num_kurals
+    
     sentences_to_process = sentences[start_index:end_index]
     meanings_to_process = meanings[start_index:end_index]
     english_translations_to_process = english_translations[start_index:end_index] if len(english_translations) > start_index else []
     
     total = len(sentences_to_process)
+    
+    # Final safety check: Ensure we don't process more than configured
+    if total > max_videos:
+        sentences_to_process = sentences_to_process[:max_videos]
+        meanings_to_process = meanings_to_process[:max_videos]
+        english_translations_to_process = english_translations_to_process[:max_videos] if len(english_translations_to_process) > max_videos else english_translations_to_process
+        total = max_videos
+        print(f"  ⚠ Safety limit: Processing exactly {max_videos} videos (configured limit)")
     
     # Reset font cache and load font once at start
     print("\nLoading font...")
@@ -1081,8 +1131,10 @@ def process_sentences():
     load_tamil_font(font_size, verbose=True)
     
     print(f"\n{'='*60}")
-    print(f"Processing {total} kurals: {start_kural} to {end_kural}")
+    print(f"Processing {total} videos per run (as configured)")
+    print(f"Kurals: {start_kural} to {end_kural}")
     print(f"Last processed: {last_kural}")
+    print(f"Videos per run: {config.VIDEOS_PER_RUN if hasattr(config, 'VIDEOS_PER_RUN') else 10}")
     print(f"{'='*60}\n")
     
     last_processed = start_kural - 1  # Track last successfully processed kural
@@ -1226,8 +1278,12 @@ Thirukural, Thirukkural, Tamil Wisdom, Ancient Philosophy, Life Lessons, Spiritu
                     publish_at = calculate_publish_date(
                         relative_video_index, 
                         start_date=None,  # Use None to always start from today/tomorrow
-                        schedule_time=YOUTUBE_SCHEDULE_TIME
+                        schedule_times=YOUTUBE_SCHEDULE_TIMES  # Pass list of schedule times
                     )
+                    # Display which time slot this video is scheduled for
+                    time_index = (relative_video_index - 1) % len(YOUTUBE_SCHEDULE_TIMES)
+                    scheduled_time = YOUTUBE_SCHEDULE_TIMES[time_index]
+                    print(f"  📅 Scheduled for: {scheduled_time} (slot {time_index + 1}/{len(YOUTUBE_SCHEDULE_TIMES)})")
                 except Exception as e:
                     print(f"  ⚠ Scheduling error: {e}, publishing immediately")
                     publish_at = None

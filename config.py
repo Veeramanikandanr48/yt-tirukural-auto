@@ -56,9 +56,16 @@ YOUTUBE_DEFAULT_AUDIO_LANGUAGE = "ta"  # Default audio language code
 # SCHEDULING CONFIGURATION
 # ============================================================================
 YOUTUBE_SCHEDULE_ENABLED = True  # Set to True to schedule videos
-YOUTUBE_SCHEDULE_TIME = "15:00"  # Schedule time in 24-hour format (HH:MM)
+# Multiple schedule times - videos will cycle through these times
+# Pattern: 8 AM, 12 PM, 3 PM, 6 PM, then repeat (8, 12, 3, 6, 8, 12, 3, 6...)
+YOUTUBE_SCHEDULE_TIMES = ["08:00", "12:00", "15:00", "18:00"]  # Schedule times in 24-hour format (HH:MM)
 YOUTUBE_SCHEDULE_START_DATE = date.today().strftime("%Y-%m-%d")  # Start date (YYYY-MM-DD)
 YOUTUBE_TIMEZONE = "Asia/Kolkata"  # Timezone for scheduling
+
+# ============================================================================
+# PROCESSING CONFIGURATION
+# ============================================================================
+VIDEOS_PER_RUN = 10  # Number of videos to process and upload per run (always exactly this many)
 
 # ============================================================================
 # TTS MODEL CONFIGURATION

@@ -1,0 +1,40 @@
+# Ultra-minimal Dockerfile (use if standard Dockerfile is still too large)
+FROM python:3.10-alpine
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ffmpeg \
+    gcc \
+    g++ \
+    musl-dev \
+    libffi-dev \
+    git \
+    && rm -rf /var/cache/apk/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies with optimizations
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip cache purge
+
+# Copy application files
+COPY generate_batch_videos.py .
+COPY config.py .
+COPY thirukural_git.json .
+COPY assets/ ./assets/
+
+# Create directories
+RUN mkdir -p dist data/audio_generated temp logs
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONIOENCODING=utf-8
+
+# Run
+CMD ["python3", "generate_batch_videos.py"]
+

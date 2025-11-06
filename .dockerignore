@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+venv310/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sensitive files
+client_secrets.json
+token.pickle
+*.key
+*.pem
+
+# Output files (generated at runtime)
+dist/
+data/audio_generated/
+temp/
+logs/*.log
+*.mp4
+*.wav
+
+# Model cache (download at runtime, not include in image)
+.cache/
+*.h5
+*.pth
+*.pt
+models/
+mms-tts-tam-model/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Deployment files
+railway.json
+render.yaml
+Dockerfile
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# State tracking
+last_kural.txt
+
+# Large assets (if not needed in image)
+# Uncomment if you want to exclude background images
+# assets/bg/
+
