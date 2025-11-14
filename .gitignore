@@ -51,6 +51,15 @@ desktop.ini
 
 # State tracking files
 last_kural.txt
+last_post_kural.txt
+pending_post.txt
+token_community.pickle
+
+# Generated posts and images
+posts/
+
+# Model directories
+mms-tts-tam-model/
 
 # Keep these directories but ignore their contents
 !dist/.gitkeep

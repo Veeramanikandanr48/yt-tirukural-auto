@@ -21,8 +21,8 @@ LOG_DIR = "logs"
 # ============================================================================
 # VIDEO SETTINGS
 # ============================================================================
-FONT_SIZE = 30  # Base font size (will be scaled for 4K)
-MIN_VIDEO_DURATION = 30.0  # Minimum video duration in seconds
+FONT_SIZE = 26  # Base font size (will be scaled for 4K)
+MIN_VIDEO_DURATION = 20.0  # Minimum video duration in seconds
 
 # 4K YouTube Shorts Video Quality Settings (Vertical 9:16 format)
 VIDEO_RESOLUTION = (2160, 3840)  # 4K UHD YouTube Shorts resolution (width, height) - Vertical 9:16 aspect ratio
@@ -46,11 +46,27 @@ YOUTUBE_UPLOAD_ENABLED = True  # Set to True to enable automatic uploads
 YOUTUBE_CHANNEL_NAME = "Wisdom Connect Global"  # Your YouTube channel name
 YOUTUBE_CLIENT_SECRETS_FILE = "client_secrets.json"  # OAuth2 client secrets file
 YOUTUBE_TOKEN_FILE = "token.pickle"  # Token file to store credentials
-YOUTUBE_SCOPES = ['https://www.googleapis.com/auth/youtube.upload']
+YOUTUBE_SCOPES = ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.force-ssl', 'https://www.googleapis.com/auth/youtube.readonly']
 YOUTUBE_PRIVACY_STATUS = "private"  # Options: "private", "unlisted", "public"
 YOUTUBE_CATEGORY_ID = "27"  # Category ID (27 = Education)
 YOUTUBE_DEFAULT_LANGUAGE = "ta"  # Default language code (ta = Tamil)
 YOUTUBE_DEFAULT_AUDIO_LANGUAGE = "ta"  # Default audio language code
+
+# ============================================================================
+# YOUTUBE MCP SERVER CONFIGURATION
+# ============================================================================
+# YouTube MCP Server API Key (for video info, transcripts, search, etc.)
+# Get your API key from: https://console.cloud.google.com/apis/credentials
+# Note: This is different from OAuth2 credentials used for uploads
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', "AIzaSyDRlUJBLacr2r4r3COWpmcQeqjKQa94uWk")  # Set via environment variable or update here
+YOUTUBE_MCP_ENABLED = True  # Set to True to use YouTube MCP Server for video info/transcripts
+YOUTUBE_TRANSCRIPT_LANG = "en"  # Default language for transcripts
+
+# ============================================================================
+# YOUTUBE PLAYLIST CONFIGURATION
+# ============================================================================
+YOUTUBE_PLAYLIST_NAME = "Tirukkural – 1330 Kurals Explained (with Meaning & Story)"  # Playlist name to add videos to
+YOUTUBE_PLAYLIST_ID = None  # Optional: Direct playlist ID (if None, will search by name)
 
 # ============================================================================
 # SCHEDULING CONFIGURATION
@@ -58,8 +74,8 @@ YOUTUBE_DEFAULT_AUDIO_LANGUAGE = "ta"  # Default audio language code
 YOUTUBE_SCHEDULE_ENABLED = True  # Set to True to schedule videos
 # Multiple schedule times - videos will cycle through these times
 # Pattern: 8 AM, 12 PM, 3 PM, 6 PM, then repeat (8, 12, 3, 6, 8, 12, 3, 6...)
-YOUTUBE_SCHEDULE_TIMES = ["08:00", "12:00", "15:00", "18:00"]  # Schedule times in 24-hour format (HH:MM)
-YOUTUBE_SCHEDULE_START_DATE = date.today().strftime("%Y-%m-%d")  # Start date (YYYY-MM-DD)
+YOUTUBE_SCHEDULE_TIMES = ["08:00","12:00","15:00","18:00"]  # Schedule times in 24-hour format (HH:MM)
+YOUTUBE_SCHEDULE_START_DATE = "2025-11-25"  # Start date (YYYY-MM-DD)
 YOUTUBE_TIMEZONE = "Asia/Kolkata"  # Timezone for scheduling
 
 # ============================================================================
